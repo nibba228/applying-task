@@ -1,5 +1,6 @@
 #include "socket.hpp"
 
+#include <atomic>
 #include <cerrno>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,8 +28,8 @@ Socket::Socket(std::string_view ip, uint16_t port, bool verbose, bool blocking)
     throw std::runtime_error("socket creation failed");
   } 
 
-  if(verbose) {
-    std::cout << "Socket successfully created\n";
+  if (verbose) {
+    std::cout << "Socket successfully created\n" << std::flush;
   }
 
   if (ip != "0.0.0.0") {
@@ -36,33 +37,33 @@ Socket::Socket(std::string_view ip, uint16_t port, bool verbose, bool blocking)
   }
 }
 
-void Socket::Serve(std::function<bool(int)> handler) {
+void Socket::Serve(std::function<bool(int)> handler, std::atomic_bool& is_cancelled) {
   if ((::bind(sockfd_, reinterpret_cast<struct sockaddr*>(&servaddr_), sizeof(struct sockaddr_in))) != 0) {
     std::cout << errno;
     throw std::runtime_error("socket bind failed");
   } 
 
-  if(verbose_) {
-    std::cout << "socket successfully binded" << std::endl;
+  if (verbose_) {
+    std::cout << "socket successfully binded\n" << std::flush;
   }
 
   if ((listen(sockfd_, client_limit_)) != 0) {
     throw std::runtime_error("Listen failed");
   } 
 
-  if(verbose_) {
-    std::cout << "Server listening" << std::endl;
+  if (verbose_) {
+    std::cout << "Server listening\n" << std::flush;
   }
 
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
   bool running{true};
 
-  while (running) {
+  while (running && !is_cancelled.load(std::memory_order_acquire)) {
     int connfd = accept(sockfd_, reinterpret_cast<struct sockaddr*>(&client_addr), &client_len);
     if (connfd < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
       throw std::runtime_error("ERROR on accept");
-    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+    } else if (connfd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
       continue;
     }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <atomic>
 #include <string_view>
 #include <functional>
 #include <netinet/in.h>
@@ -21,7 +21,7 @@ public:
   void Close() const { close(sockfd_); }
   void Fsync() const { fsync(sockfd_); }
 
-  void Serve(std::function<bool(int)> handler);
+  void Serve(std::function<bool(int)> handler, std::atomic_bool& is_cancelled);
 
   void Connect();
 

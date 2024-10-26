@@ -7,16 +7,10 @@
 #include <strings.h>
 #include <iostream>
 
-Socket client("0.0.0.0", 8000, false);
-
-void SignalHandler(int) {
-  client.Close();
-  exit(1);
-}
-
 int main() {
-  signal(SIGINT, SignalHandler);
-
+  int port;
+  std::cin >> port;
+  Socket client("0.0.0.0", port, true);
   const int BUF_SIZE = 4096;
   client.Connect();
 
@@ -24,7 +18,7 @@ int main() {
     char buf[BUF_SIZE];
     bzero(buf, BUF_SIZE);
     int res = client.Read(buf, BUF_SIZE);
-    if (res < 0) {
+    if (res <= 0) {
       throw std::runtime_error("error reading");
     }
     std::cout << buf;
